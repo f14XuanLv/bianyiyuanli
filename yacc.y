@@ -62,29 +62,29 @@ return curr;
 
 int judgeb(node*p)//judgeb:judge bool
 {
-switch(p->mark)
-{
-case 53:return 1;
-case -53:return 1;
-case 54:return 1;
-case -54:return 1;
-case 56:return 1;
-case -56:return 1;
-case 57:return 1;
-case -57:return 1;
-case 58:return 1;
-case -58:return 1;
-case 64:return 1;
-case -5320:return 1;
-case 5320:return 1;
-case -5326:return 1;
-case -5311:return 1;
-case -5334:return 1;
-case 63: return 1;
-case 62:return 2;
-case 6211:return 2;
-default:return 0;
-}
+      switch(p->mark)
+      {
+      case 53:return 1;
+      case -53:return 1;
+      case 54:return 1;
+      case -54:return 1;
+      case 56:return 1;
+      case -56:return 1;
+      case 57:return 1;
+      case -57:return 1;
+      case 58:return 1;
+      case -58:return 1;
+      case 64:return 1;
+      case -5320:return 1;
+      case 5320:return 1;
+      case -5326:return 1;
+      case -5311:return 1;
+      case -5334:return 1;
+      case 63: return 1;
+      case 62:return 2;
+      case 6211:return 2;
+      default:return 0;
+      }
 }
 
 void print(node*head,node*curr,node*tail)
