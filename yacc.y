@@ -1,144 +1,25 @@
 %{
-#include <ctype.h>
-#include <stdio.h>
-#include <string.h> 
-#define YYDEBUG 1
-#include <malloc.h>
+#include "header.h"
 
-extern FILE* yyin; // 在 Bison 中声明 yyin 变量
-int counter=1;
-int Rcounter=0;//Rcounter:register counter
-int esign=1;
-int ifcounter=0;
-int *array=NULL;
-int i;
-int comparemark;
-int jump;
-char *exampleid;
+extern FILE* yyin;  // 声明外部文件指针
 
-typedef struct node
-{
-int e1;
-int e2;
-int e3;
-int mark;
-char*E1;
-char*E2;
-char*E3;
-struct node*next;
-struct node*past;
-}node;
+//每一个四元式都是一个node
 
-node* newnode()
-{
-node* p=(node*)malloc((sizeof(node)));
-return p;
-}
+node* linkhead;
+node* current;
+node* point;
 
-node* addnode(node*tail,int t1,int t2,int t3,int mark,char*T1,char*T2,char*T3)
-{
-tail->next=(node*)
-malloc((sizeof(node)));
-tail->next->e1=t1;
-tail->next->e2=t2;
-tail->next->e3=t3;
-tail->next->mark=mark;
-tail->next->E1=T1;
-tail->next->E2=T2;
-tail->next->E3=T3;
-tail->next->past=tail;
-return tail;
-}
+node* nowNode;
 
-node* delete(node*curr)
-{
-node*t=curr->next;
-curr->next->next->past=curr;
-curr->next=curr->next->next;
-free(t);
-t=NULL;
-return curr;
-}
+int TnUse=1;//用于指示当前可用的Tn
+char* _judgeType;//用于判断judgeJump的类型
+nodes* AllNodes;
 
-int judgeb(node*p)//judgeb:judge bool
-{
-switch(p->mark)
-{
-case 53:return 1;
-case -53:return 1;
-case 54:return 1;
-case -54:return 1;
-case 56:return 1;
-case -56:return 1;
-case 57:return 1;
-case -57:return 1;
-case 58:return 1;
-case -58:return 1;
-case 64:return 1;
-case -5320:return 1;
-case 5320:return 1;
-case -5326:return 1;
-case -5311:return 1;
-case -5334:return 1;
-case 63: return 1;
-case 62:return 2;
-case 6211:return 2;
-default:return 0;
-}
-}
+node* tempHead;
+node* tempTail;
 
-void print(node*head,node*curr,node*tail)
-{
-      if(esign)
-      {
-            curr=head;
-            for(i=1;curr!=tail;i++)
-            { 
-                  if(i==20){break;}
-                  printf("(%d)(",i);
-                  if(i==5){jump=7;}
-                  if(i==6){jump=20;}
-                  if(i==8){jump=20;}
-                  if(i==9){jump=11;}
-                  if(i==10){jump=14;}
-                  if(i==13){printf("j,-,-,5)\n");jump=16;i++;printf("(14)(");}
-                  if(i==15){jump=5;}
-                  if(i==18){jump=14;curr->next->e3=14;}
-                  if(i==19){jump=5;}
-                  if(curr->next->mark==51){printf(":=,");}
-                  else if(curr->next->mark==43){printf("+,");}
-                  else if(curr->next->mark==45){printf("-,");}
-                  else if(curr->next->mark==41){printf("*,");}
-                  else if(curr->next->mark==48){printf("/,");}
-                  else if(curr->next->mark==53||curr->next->mark==5320){printf("j<,");}
-                  else if(curr->next->mark==54){printf("j<=,");}
-                  else if(curr->next->mark==56){printf("j=,");}
-                  else if(curr->next->mark==57){printf("j>,");}
-                  else if(curr->next->mark==58){printf("j>=,");}
-                  else if(curr->next->mark==-53||curr->next->mark==-5320||curr->next->mark==-5311||curr->next->mark==-5334||curr->next->mark==-5326||i==10||i==15||i==18||i==19){printf("j,");}
-                  else if(curr->next->mark==6211||curr->next->mark==62){printf("-,");}
-                  if(curr->next->E1!=NULL){printf("%s,",curr->next->E1);}
-                  else if(curr->next->e1!=-2147483645){printf("%d,",curr->next->e1);}
-                  else {printf("-,");}
-                  if(curr->next->E2!=NULL){printf("%s,",curr->next->E2);}
-                  else if(curr->next->e2!=-2147483645){printf("%d,",curr->next->e2);}
-                  else {printf("-,");}
-                  if(curr->next->E3!=NULL){printf("%s)\n",curr->next->E3);}
-                  else if(curr->next->e3!=-2147483645)
-                  {
-                        if(judgeb(curr->next)){printf("%d)\n",curr->next->e3);}
-                        else printf("%d)\n",curr->next->e3);
-                  }
-                  else {printf("%d)\n",jump);}
-                  curr=curr->next;
-            }
-      }
-      else{printf("error!\n");}
-}
-node*linkhead;
-node*curr;
-node*linktail;
-//注：C语言不支持node*a,b,c;
+extern int yylineno; // 行号
+extern int iserror = 0; // 用于判断是否有错误
 %}
 
 
@@ -147,10 +28,11 @@ node*linktail;
 int i;
 float f;
 char* id;
+struct nodes* Nodes;
 }
 
-%token EQ NE WHILE PROGRAM BEGIN0 VAR INTEGER REAL IF THEN ELSE SEMI COLON COMMA DOT LPAREN RPAREN ASSIGNMENT FINISH  UNTIL REPEAT
-
+%token EQ NE WHILE PROGRAM BEGIN0 VAR INTEGER REAL IF THEN ELSE SEMI COLON COMMA DOT LPAREN RPAREN ASSIGNMENT FINISH UNTIL REPEAT
+%token FALSECHAR FALSECOMMENT ILLEGALCHR
 %token <id> ID
 %token <i> INT
 %token <f> FLOAT
@@ -161,19 +43,39 @@ char* id;
 %left PLUS MINUS
 %left TIMES DIVIDE
 %left ELSE END OUT
-%type <id> assignState subprog strExpe realExpe
+%type <id> strExpe
 %type <i> algoriExpe
+%type <Nodes> statement stateTab assignState condiState whileState complexState subprog realExpe
 %start prog
 
+%%
 
-%% //下面是语法规则
+//将产生式翻译成中文
+
 prog : PROGRAM ID SEMI subprog { 
-      printf("Successfully enter the program!\n"); 
-      exampleid=$2;
-      return 0;
+    linkhead = newnode();
+    linkhead->type = 1;
+    linkhead->programName = $2;
+    AllNodes= newnodes();
+    AllNodes->head=linkhead;
+    AllNodes->tail=linkhead;
+    merge(AllNodes,$4);
+
+    node* sysNode = newnode();
+    sysNode->type=6;
+    addNodeToNodes(AllNodes,sysNode);
+
+    printAllofNodes(AllNodes);
+    
+    return 0;
     };
 
-subprog : varExplain BEGIN0 stateTab END DOT;
+
+subprog : varExplain BEGIN0 stateTab END DOT{
+    
+    $$ =$3;
+
+};
 
 varExplain : VAR varExpTab;
 
@@ -186,302 +88,620 @@ type : INTEGER
 varTab : ID
 	| ID COMMA varTab;
 
-stateTab : statement
-	| statement SEMI stateTab;
+stateTab : statement{
+    $$=$1;
+}
+	| statement SEMI stateTab{
+        node* stateNodes1;
+        stateNodes1 = $1;
+        node* stateNodes2;
+        stateNodes2 = $3;
+        merge(stateNodes1,stateNodes2);
+        $$=stateNodes1;
 
-statement : assignState
-	| condiState
-	| whileState
-	| complexState;
+    };
+
+statement : assignState{$$=$1;}
+	| condiState{$$=$1;}
+	| whileState{$$=$1;}
+	| complexState{$$=$1;};
 
 assignState : ID ASSIGNMENT algoriExpe {
-      counter++;
-      linktail=addnode(linktail,$3,-2147483645,-2147483645,51,NULL,NULL,$1);
-      linktail=linktail->next;
-      }
-      | ID ASSIGNMENT strExpe {
-            counter++;
-            linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,51,$3,NULL,$1);
-            linktail=linktail->next;
-      };
+    //声明
+    node* assignNode;
+    assignNode = newnode();
+    //属性
+    assignNode->type =2;
+    assignNode->assignType=1;
+    assignNode->value1=$3;
+    assignNode->variaName=$1;
+    //链接
+
+    nodes*assignNodes = newnodes();
+    assignNodes->head=assignNode;
+    assignNodes->tail=assignNode;
+    $$=assignNodes;
+
+
+    }
+    | ID ASSIGNMENT strExpe {
+        //声明
+    node* assignNode;
+    assignNode = newnode();
+    //属性
+    assignNode->type =2;
+    assignNode->assignType=2;
+    //------
+    assignNode->value2=$3;
+    assignNode->variaName=$1;
+    //链接
+    nodes*assignNodes = newnodes();
+    assignNodes->head = assignNode;
+    assignNodes->tail = assignNode;
+    
+    
+    
+
+    nodes* tempNodes = newnodes();
+    if(tempHead!=NULL){
+    tempNodes->head= tempHead;
+    tempNodes->tail= tempTail;
+    merge(tempNodes,assignNodes);}
+    else{printf("NULL\n\n");
+        tempNodes->head = assignNode;
+        tempNodes->tail = assignNode;
+    }
+
+    tempHead=NULL;
+    tempTail=NULL;
+    $$=tempNodes;
+    
+    };  
 
 condiState : IF realExpe THEN statement ELSE statement 
 {
-      ifcounter++;
-      linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,64,NULL,NULL,NULL);
-      linktail=linktail->next;  
-      curr=linktail->past;
-            int tempcounter=0;int temp;
-            while(curr->next->E3!=NULL||curr->next->e3!=-2147483645){curr=curr->past;tempcounter++;}
-            for(int i=0;judgeb(curr->next)==1;i++)
-            {  
-                  if(curr->mark==53&&curr->next->mark==-53)
-                  {
-                        if(curr->next->next->mark==64)
-                        {if(curr->next->next==linktail){curr->next=delete(curr->next);linktail=curr->next;}else {curr->next=delete(curr->next);}tempcounter--;}
-                        else break;
-                  }
-                  if(i>=2){tempcounter++;}
-                  if(curr->next->e3==-2147483645)
-                  { 
-                        if(curr->next->mark==53&&curr->next->next->mark==-53)temp=counter-tempcounter;
-                        if(curr->next->mark<0)
-                        { 
-                              if(curr->next->mark==-53)curr->next->e3=counter;
-                              else if(curr->next->mark==-5320)curr->next->e3=curr->next->next->next->e3;
-                        }
-                        else
-                        {
-                              if(curr->next->mark==53)curr->next->e3=counter-tempcounter;
-                              else if(curr->next->mark==5320)curr->next->e3=temp;
-                        }
-                  }
+    nodes* realnodes = $2;
+    int realNum = count(realnodes);
+    
 
-                  if(curr!=linkhead)curr=curr->past;
-                  else break;
-            }
+    nodes* thennodes = $4;
+    int thenNum = count(thennodes);
+
+    nodes* elsenodes = $6;
+    int elseNum = count(elsenodes);
+
+
+    node* temphead =  realnodes->head;
+
+    while(1){
+        if(temphead->type==4){
+        temphead->relaJudgeJumpPosition+=2;}
+        if(temphead==realnodes->tail)break;
+        temphead = temphead->next;
+    }
+
+    node* jumpNode = newnode();
+    jumpNode->type=3;
+    jumpNode->relaJumpPosition=thenNum+2;
+
+    node* jumpNode_ = newnode();
+    jumpNode_->type=3;
+    jumpNode_->relaJumpPosition=elseNum+1;
+    
+    nodes* endNodes;
+    endNodes = realnodes;
+    addNodeToNodes(endNodes,jumpNode);
+    merge(endNodes,thennodes);
+    addNodeToNodes(endNodes,jumpNode_);
+    merge(endNodes,elsenodes);
+
+    $$=endNodes;
+
+
 }
   	| REPEAT stateTab UNTIL realExpe {
-        // Handle the repeat-until loop here
-        // You may need to adjust the logic based on your specific requirements
-        curr = linktail->past; // Move to the last added node
-        // Add logic to handle the repeat-until loop
+        nodes* realnodes = $4;
+        int realNum = count(realnodes);
+        
+
+        nodes* thennodes = $2;
+        int thenNum = count(thennodes);
+
+        node* temphead =  realnodes->head;
+        while(1){
+            if(temphead->type==4){
+            temphead->relaJudgeJumpPosition+=2;}
+            if(temphead==realnodes->tail)break;
+            temphead = temphead->next;
+        }
+
+
+
+        node* jumpNode = newnode();
+        jumpNode->type=3;
+        jumpNode->relaJumpPosition=-thenNum-1;
+
+        
+        nodes* endNodes;
+        endNodes = thennodes;
+        merge(endNodes,realnodes);
+        addNodeToNodes(endNodes,jumpNode);
+
+        $$=endNodes;
     };
 
 whileState : WHILE realExpe DO statement 
 {
-      linktail=addnode(linktail,counter,-2147483645,-2147483645,63,NULL,NULL,NULL);
-      linktail=linktail->next;
-      curr=linktail->past;
-      int tempcounter=0;int temp;
-      while(curr->next->E3!=NULL||curr->next->e3!=-2147483645){curr=curr->past;tempcounter++;}
-      for(int i=0;judgeb(curr->next)==1;i++)
-      { 
-            if(i>=2)
-                  {tempcounter++;}
-            if(curr->next->mark==53&&curr->next->next->mark==-5334)
-                  {temp=counter-tempcounter;}
-            if(curr->next->mark<0)
-            {
-                  if(curr->next->mark==-53)
-                  {
-                        if(curr->next->e3==-2147483645)curr->next->e3=counter+1;
-                        curr->next->mark=-5334;
-                  }//同时去掉多余-53
-                  else if(curr->next->e3==-2147483645&&curr->next->mark==-5320)curr->next->e3=curr->next->next->next->e3;
-            }
+    nodes* realnodes = $2;
+        int realNum = count(realnodes);
+        
 
-            else
-            {
-                  if(curr->next->e3==-2147483645&&curr->next->mark==53)curr->next->e3=counter-tempcounter;
-                  else if(curr->next->e3==-2147483645&&curr->next->mark==5320)curr->next->e3=temp;
-                  else if(curr->next->mark==63)
-                  {
-                        linktail=addnode(linktail,-2147483645,-2147483645,curr->next->e1,62,NULL,NULL,NULL);
-                        linktail=linktail->next;
-                        curr=delete(curr);
-                        counter++;
-                  }
-                  else if(curr->next->mark==64)break;
-            }
+        nodes* thennodes = $4;
+        int thenNum = count(thennodes);
 
-            if(curr!=linkhead)curr=curr->past;
-            else {break;}
-      }
+        node* temphead =  realnodes->head;
+        while(1){
+            if(temphead->type==4){
+            temphead->relaJudgeJumpPosition+=2;}
+            if(temphead->type==3){
+            temphead->relaJumpPosition+=(thenNum+2);}
+            if(temphead==realnodes->tail)break;
+            temphead = temphead->next;
+        }
+
+
+
+        node* jumpNode = newnode();
+        jumpNode->type=3;
+        jumpNode->relaJumpPosition+=(thenNum+2);
+
+        node* jumpNode_ = newnode();
+        jumpNode_->type=3;
+        jumpNode_->relaJumpPosition=-thenNum-1-realNum;
+        
+        nodes* endNodes;
+        endNodes = realnodes;
+        addNodeToNodes(endNodes,jumpNode);
+        merge(endNodes,thennodes);
+        addNodeToNodes(endNodes,jumpNode_);
+        
+
+        $$=endNodes;
 };
 
 complexState : BEGIN0 stateTab END;
 
 algoriExpe : INT
 	| algoriExpe PLUS algoriExpe {
-        counter++;
-        $$ = $1 + $3;
-        linktail=addnode(linktail,$1,$3,$1+$3,43,NULL,NULL,NULL);
-        linktail=linktail->next;
+        $$=$1+$3;
     }
 	| algoriExpe MINUS algoriExpe {
-        counter++;
-        $$ = $1 - $3;
-        linktail=addnode(linktail,$1,$3,$1-$3,45,NULL,NULL,NULL);
-        linktail=linktail->next;
+        $$=$1-$3;
     }
 	| algoriExpe TIMES algoriExpe {
-        counter++;
-        $$ = $1 * $3;
-        linktail=addnode(linktail,$1,$3,$1*$3,41,NULL,NULL,NULL);
-        linktail=linktail->next;
+        $$=$1*$3;
     }
 	| algoriExpe DIVIDE algoriExpe {
-        counter++;
-        $$ = $1 / $3; // don't care div 0
-        linktail=addnode(linktail,$1,$3,$1/$3,48,NULL,NULL,NULL);
-        linktail=linktail->next;
+        $$=$1/$3;
     };
 
-strExpe :  ID
+strExpe :  ID{$$=$1;
+
+}
     | strExpe PLUS algoriExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          linktail=addnode(linktail,-2147483645,$3,-2147483645,43,$1,NULL,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="+";
+        sprintf(strNode->left,"%s",$1);
+        sprintf(strNode->right,"%d",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
+        
     }
     | algoriExpe PLUS strExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          linktail=addnode(linktail,$1,-2147483645,-2147483645,43,NULL,$3,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="+";
+        sprintf(strNode->left,"%d",$1);
+        sprintf(strNode->right,"%s",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     }
     | strExpe PLUS strExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          if(((int)$1[1]==49&&(int)$3[1]==50)||((int)$1[1]==50&&(int)$3[1]==49)){Rcounter=0;}
-          linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,43,$1,$3,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="+";
+        sprintf(strNode->left,"%s",$1);
+        sprintf(strNode->right,"%s",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
+
+          
     }
     | strExpe MINUS algoriExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          linktail=addnode(linktail,-2147483645,$3,-2147483645,45,$1,NULL,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="-";
+        sprintf(strNode->left,"%s",$1);
+        sprintf(strNode->right,"%d",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     }
     | algoriExpe MINUS strExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          linktail=addnode(linktail,$1,-2147483645,-2147483645,45,NULL,$3,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="-";
+        sprintf(strNode->left,"%d",$1);
+        sprintf(strNode->right,"%s",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     }
     | strExpe MINUS strExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          if((int)$1[1]==49&&(int)$3[1]==50||(int)$1[1]==50&&(int)$3[1]==49){Rcounter=0;}
-          linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,45,$1,$3,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="-";
+        sprintf(strNode->left,"%s",$1);
+        sprintf(strNode->right,"%s",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     }
     | strExpe TIMES algoriExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          linktail=addnode(linktail,-2147483645,$3,-2147483645,41,$1,NULL,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="*";
+        sprintf(strNode->left,"%s",$1);
+        sprintf(strNode->right,"%d",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     }
     | algoriExpe TIMES strExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          linktail=addnode(linktail,$1,-2147483645,-2147483645,41,NULL,$3,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="*";
+        sprintf(strNode->left,"%d",$1);
+        sprintf(strNode->right,"%s",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     }
     | strExpe TIMES strExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          if((int)$1[1]==49&&(int)$3[1]==50||(int)$1[1]==50&&(int)$3[1]==49){Rcounter=0;}
-          linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,41,$1,$3,$$);
-          linktail=linktail->next;
+          node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="*";
+        sprintf(strNode->left,"%s",$1);
+        sprintf(strNode->right,"%s",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     }
     | strExpe DIVIDE algoriExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          linktail=addnode(linktail,-2147483645,$3,-2147483645,48,$1,NULL,$$);
-          linktail=linktail->next;
+          node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="/";
+        sprintf(strNode->left,"%s",$1);
+        sprintf(strNode->right,"%d",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     }
     | algoriExpe DIVIDE strExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          linktail=addnode(linktail,$1,-2147483645,-2147483645,48,NULL,$3,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="/";
+        sprintf(strNode->left,"%d",$1);
+        sprintf(strNode->right,"%s",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     }
     | strExpe DIVIDE strExpe {
-          counter++;
-          if(Rcounter==0){$$="T1";Rcounter++;}
-          else $$="T2";
-          if((int)$1[1]==49&&(int)$3[1]==50||(int)$1[1]==50&&(int)$3[1]==49){Rcounter=0;}
-          linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,48,$1,$3,$$);
-          linktail=linktail->next;
+        node* strNode;
+        strNode = newnode();
+          
+        strNode->type=5;
+        strNode->aloType="/";
+        sprintf(strNode->left,"%s",$1);
+        sprintf(strNode->right,"%s",$3);
+        sprintf(strNode->res,"T%d",TnUse);
+        TnUse++;
+        if (tempHead==NULL){
+            tempHead = strNode;
+            tempTail = strNode;
+        }else{
+        tempTail = addNode(tempTail,strNode);
+        }
+        
+        $$=strNode->res;
     };
 
 realExpe : algoriExpe realOp algoriExpe {
-          counter++;
-          linktail=addnode(linktail,$1,$3,-2147483645,comparemark,NULL,NULL,NULL);//ET:Empty Truth
-          linktail=linktail->next;
-          counter++;
-          linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,-comparemark,NULL,NULL,NULL);//EF:Empty False
-          linktail=linktail->next;
+    
+        
+        char tempstr[16] = {0};
+        char tempstr_[16] = {0};
+        node* ifNode;
+        ifNode = newnode();
+        ifNode->type=4;
+        ifNode->judgeType = _judgeType;
+        sprintf(ifNode->judgeLeft,"%d",$1);
+        sprintf(ifNode->judgeRight,"%d",$3);
+
+        nodes* ifNodes = newnodes();
+        if(tempHead == NULL){
+            ifNodes->head = ifNode;
+            ifNodes->tail = ifNode;
+        }else{
+        ifNodes->head= tempHead;
+        ifNodes->tail= tempTail;
+        addNodeToNodes(ifNodes,ifNode);
+        }
+        tempHead=NULL;
+        tempTail=NULL;
+        $$ = ifNodes;
     }
     | strExpe realOp algoriExpe {
-          counter++;
-          linktail=addnode(linktail,-2147483645,$3,-2147483645,comparemark,$1,NULL,NULL);//ET:Empty Truth
-          linktail=linktail->next;
-          counter++;
-          linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,-comparemark,NULL,NULL,NULL);//EF:Empty False
-          linktail=linktail->next;
+        
+        char tempstr[16] = {0};
+        char tempstr_[16] = {0};
+        node* ifNode;
+        ifNode = newnode();
+        ifNode->type=4;
+        ifNode->judgeType = _judgeType;
+        sprintf(ifNode->judgeLeft,"%s",$1);
+        sprintf(ifNode->judgeRight,"%d",$3);
+
+        nodes* ifNodes = newnodes();
+        if(tempHead == NULL){
+            ifNodes->head = ifNode;
+            ifNodes->tail = ifNode;
+        }else{
+        ifNodes->head= tempHead;
+        ifNodes->tail= tempTail;
+        addNodeToNodes(ifNodes,ifNode);
+        }
+        tempHead=NULL;
+        tempTail=NULL;
+        $$ = ifNodes;
     }
     | strExpe realOp strExpe {
-          counter++;
-          linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,comparemark,$1,$3,NULL);//ET:Empty Truth
-          linktail=linktail->next;
-          counter++;
-          linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,-comparemark,NULL,NULL,NULL);//EF:Empty False
-          linktail=linktail->next;
+        char tempstr[16] = {0}; 
+        char tempstr_[16] = {0};
+        node* ifNode;
+        ifNode = newnode();
+        ifNode->type=4;
+        ifNode->judgeType = _judgeType;
+        sprintf(ifNode->judgeLeft,"%s",$1);
+        sprintf(ifNode->judgeRight,"%s",$3);
+
+        nodes* ifNodes = newnodes();
+        if(tempHead == NULL){
+            ifNodes->head = ifNode;
+            ifNodes->tail = ifNode;
+        }else{
+        ifNodes->head= tempHead;
+        ifNodes->tail= tempTail;
+        addNodeToNodes(ifNodes,ifNode);
+        }
+        tempHead=NULL;
+        tempTail=NULL;
+        $$ = ifNodes;
     }
     | algoriExpe realOp strExpe {
-          counter++;
-          linktail=addnode(linktail,$1,-2147483645,-2147483645,comparemark,NULL,$3,NULL);//ET:Empty Truth
-          linktail=linktail->next;
-          counter++;
-          linktail=addnode(linktail,-2147483645,-2147483645,-2147483645,-comparemark,NULL,NULL,NULL);//EF:Empty False
-          linktail=linktail->next;
+        
+        
+        char tempstr[16] = {0};
+        char tempstr_[16] = {0};
+        node* ifNode;
+        ifNode = newnode();
+        ifNode->type=4;
+        ifNode->judgeType = _judgeType;
+        sprintf(ifNode->judgeLeft,"%d",$1);
+        sprintf(ifNode->judgeRight,"%s",$3);
+
+        nodes* ifNodes = newnodes();
+        if(tempHead == NULL){
+            ifNodes->head = ifNode;
+            ifNodes->tail = ifNode;
+        }else{
+        ifNodes->head= tempHead;
+        ifNodes->tail= tempTail;
+        addNodeToNodes(ifNodes,ifNode);
+        }
+        tempHead=NULL;
+        tempTail=NULL;
+        $$ = ifNodes;
     }
     | realExpe AND realExpe  {
-          curr=linktail->past;
-          curr->next->mark=-5320;
-          curr->e3=counter;
+        int realNum = count($3);
+
+        nodes* real1 = $1;
+        nodes* real2 = $3;
+        node*jump = newnode();
+        jump->type = 3;
+        jump->relaJumpPosition += realNum+1;
+        node*jump_ = newnode();
+        jump->type = 3;
+
+        
+
+        nodes* endNodes=real1;
+        addNodeToNodes(endNodes,jump);
+        merge(endNodes,real2);
+
+        $$ = endNodes;
     };
 
-realOp : LT {comparemark=53;}
-	| LE {comparemark=54;}
-	| EQ {comparemark=56;}
-	| GT {comparemark=57;}
-	| GE {comparemark=58;}
+realOp : LT {_judgeType = "<";}
+	| LE {_judgeType = "<=";}
+	| EQ {_judgeType = "=";}
+	| GT {_judgeType = ">";}
+	| GE {_judgeType = ">=";}
 	| NE;
 
 %%
 
+extern FILE *yyin; // 声明外部文件指针
 int main() 
-{
-      printf("Name: \n");
-      printf("Class: CS2\n");
-      printf("Student ID:\n");
+{   
+    char info1[100] = "";
+    char info2[100] = "";
+    char info3[100] = "";
 
-      for(;;)
-      {
-            printf("Please enter the program you want to test:\n");
-            linkhead=curr=linktail=newnode();
-            extern FILE *yyin;
-            yyin = stdin;
-            yyparse();
-            printf("(0)(program,%s,-,-)\n",exampleid);
-            print(linkhead,curr,linktail);
-            printf("(%d)(sys,-,-,-)\n",i);
-      }
+    printf("姓名\t班级\t学号\n%s\n%s\n%s\n", info1, info2, info3);
 
-      return 0;
+    char filename[256];
+
+    /* FILE *original_stdout = stdout; // 保存原始的标准输出流
+
+    freopen("NUL", "w", stdout); // 将标准输出重定向到/dev/null
+
+    FILE *file = fopen("t3.txt", "r");
+    yyin = file; // 将文件指针传递给yyin
+    linkhead = newnode();
+    current = linkhead;
+    yyparse();
+    fclose(file); // 关闭文件
+
+    freopen("CON", "w", stdout); // 将标准输出重定向到控制台 */
+
+    for (;;) 
+    {
+        printf("\n请输入测试代码文件名（包括扩展名）:\n");
+        scanf("%s", filename); // 从用户输入读取文件名
+
+        FILE *file = fopen(filename, "r"); // 打开文件
+        if (file == NULL) {
+            printf("无法打开文件，请确保文件存在并且拥有正确的权限。\n");
+            continue;
+        }
+        yyin = file; // 将文件指针传递给yyin
+        linkhead = newnode();
+        current = linkhead;
+        yyparse();
+        fclose(file); // 关闭文件
+        yylineno = 0; // 重置行号
+    }
+
+    return 0;
 }
+
 
 void yyerror(char *msg) 
 {
-    printf("Error encountered: %s \n", msg);
+   printf("error: %s\n\tat line %d.\n",msg, yylineno);  // 打印错误信息,行号
+   iserror = 1; // 设置错误标志为1
+   system("pause");
+   return;
 }
 
 int yywrap()
 {
     return 1;
 }
+
