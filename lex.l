@@ -1,12 +1,9 @@
-/* 注释1234546546518454545454623 */
-
 %{
-
 #include <stdio.h> 
 #include "y.tab.h"
-
 %}
 
+%option yylineno
 delim		[ \t \n]
 ws			{delim}+
 letter		[A-Za-z]
@@ -14,16 +11,30 @@ digit		[0-9]
 int			{digit}+
 float		\.{int}|{int}\.{int}
 id			{letter}({letter}|{digit})*
+character  ['][^'\n]*[']
+false_character     ['][^'\n]*
+comment	[/][*](.)*[*][/]
+false_comment   [/][*](.)*
 
 %s COMMENT
 %s LINECOMMENT
 
 %%
-
-<INITIAL>"(*"				{ BEGIN COMMENT;}
-<COMMENT>"*)"				{ BEGIN INITIAL;}
+<INITIAL>{comment}			{ 
+    BEGIN INITIAL;
+}
+<INITIAL>{false_comment}             {  // 错误注释
+    printf("Wrong Comment Format: %s\n", yytext); 
+    return FALSECOMMENT;
+}
+<INITIAL>{character}			{ 
+    BEGIN INITIAL;
+}
+<INITIAL>{false_character}             {  // 错误字符
+    printf("Wrong Character Format: %s\n", yytext); 
+    return FALSECHAR;
+}
 <COMMENT>.|\n				{ ;}
-
 <INITIAL>"if"				{return (IF);}
 <INITIAL>"then"				{return (THEN);}
 <INITIAL>"else"				{return (ELSE);}
@@ -54,11 +65,13 @@ id			{letter}({letter}|{digit})*
 <INITIAL>","				{return (COMMA);}
 <INITIAL>"."				{return (DOT);}
 <INITIAL>"finish"			{return (FINISH);}
-
 {id}			yylval.id=strdup(yytext); return ID;
 {int}			yylval.i = atoi(yytext); return INT;
 {float}			yylval.f = atoi(yytext); return FLOAT;
-
 {ws}				{;}
+. {  //其他非法字符
+    printf("Illegal character: %s\n",yytext);
+    return ILLEGALCHR;
+}
 
 %%
